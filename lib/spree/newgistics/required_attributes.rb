@@ -26,17 +26,17 @@ module Spree
 
       @@order_attributes = {
           customer_info: {
-            company: [:ship_address, :company],
-            first_name: [:ship_address, :first_name],
-            last_name: [:ship_address, :last_name],
-            address1: [:ship_address, :address1],
-            address2: [:ship_address, :address2],
-            city: [:ship_address, :city],
-            state: [:ship_address, :state, :name],
-            zip: [:ship_address, :zipcode],
-            country: [:ship_address, :country, :iso],
-            email: :email,
-            phone: [:ship_address, :phone]
+            company: [:address, :company],
+            first_name: [:address, :first_name],
+            last_name: [:address, :last_name],
+            address1: [:address, :address1],
+            address2: [:address, :address2],
+            city: [:address, :city],
+            state: [:address, :state, :name],
+            zip: [:address, :zipcode],
+            country: [:address, :country, :iso],
+            email: [:order, :email],
+            phone: [:address, :phone]
           },
           items: :line_items
       }

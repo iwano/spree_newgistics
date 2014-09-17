@@ -2,21 +2,36 @@ module Spree
   module Newgistics
     module DocumentBuilder
 
-      def self.products(products)
+      def self.build_product(products)
         build_objects_xml('product', products.flatten)
       end
 
-      def self.orders(orders)
+      def self.build_order(orders)
         build_objects_xml('order', orders.flatten)
+      end
+
+
+      def self.build_order_contents(order_number, sku, qty, add)
+        node_name = add ? 'AddItems' : 'RemoveItems'
+        Nokogiri::XML::Builder.new do |xml|
+          xml.send('Shipment', { apiKey: api_key, orderId: order_number}) {
+            xml.send(node_name){
+              xml.item{
+                xml.sku sku
+                xml.quantity qty
+              }
+            }
+          }
+        end.to_xml
       end
 
       private
 
       def self.build_objects_xml(type, objects)
         Nokogiri::XML::Builder.new do |xml|
-          xml.send(type.pluralize.camelise, { apiKey: api_key}) {
+          xml.send(type.pluralize.camelize, { apiKey: api_key}) {
             objects.each do |object|
-              xml.send(type.camelcase) {
+              xml.send(type.camelize) {
                 required_attributes.send("#{type}_attributes").each do |key, value|
                   get_node_value(key, value, object, xml)
                 end
@@ -27,12 +42,12 @@ module Spree
       end
 
       def self.get_node_value(key, value, object, xml)
-        key = key.to_s.camelcase
+        key = key.to_s.camelize
         ## if it's a symbol is because is a method call.
         if value.kind_of?(Symbol)
           data = object.send(value)
           ## if data it's a collection proxy it means we have children nodes (1 to N)
-          if data.kind_of?(ActiveRecord::Associations::CollectionProxy)
+          if data.respond_to? :each
             self.get_children_nodes(key, data, xml)
           else
             #else just send what the method returns.
@@ -58,7 +73,7 @@ module Spree
       def self.get_children_nodes(key, children, xml)
         xml.send(key){
           type = key.singularize
-          children.each do |object|
+          children.compact.each do |object|
             xml.send(type) {
               required_attributes.send("#{type.downcase}_attributes").each do |key, value|
                 get_node_value(key, value, object, xml)

@@ -3,8 +3,7 @@ Spree::Product.class_eval do
   after_create :post_to_newgistics
 
   def post_to_newgistics
-    binding.pry
-    document = Spree::Newgistics::DocumentBuilder.products([self])
-    Spree::Newgistics::HTTPManager.post('/products.aspx', document)
+    document = Spree::Newgistics::DocumentBuilder.build_product([self])
+    Spree::Newgistics::HTTPManager.post('/post_products.aspx', document)
   end
 end
