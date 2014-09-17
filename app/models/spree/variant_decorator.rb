@@ -1,4 +1,4 @@
-Spree::Product.class_eval do
+Spree::Variant.class_eval do
 
   after_create :post_to_newgistics
 

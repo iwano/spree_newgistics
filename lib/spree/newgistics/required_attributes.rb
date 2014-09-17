@@ -21,7 +21,7 @@ module Spree
           retail_value: [:price, :to_s],
           ship_from: 'Newgistics',
           country_of_origin: 'US',
-          is_active: :available?
+          is_active: [:product, :available?]
       }
 
       @@order_attributes = {
@@ -38,12 +38,13 @@ module Spree
             email: [:order, :email],
             phone: [:address, :phone]
           },
+          ship_method: [:shipping_method, :admin_name],
           items: :line_items
       }
 
       @@item_attributes = {
-          sku: [:variant, :sku],
-          quantity: :quantity
+          SKU: [:variant, :sku],
+          qty: :quantity
       }
     end
   end

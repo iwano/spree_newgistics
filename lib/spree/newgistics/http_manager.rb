@@ -8,15 +8,14 @@ module Spree
       end
 
       def self.post(url, body)
-        binding.pry
-        @conn.post do |req|
+        response = @conn.post do |req|
           req.url url
           req.body = body
         end
       end
 
       def self.get(url)
-        @conn.get do |req|
+        response = @conn.get do |req|
           req.url url
           req.params['key'] = Spree::Newgistics::Config[:api_key]
         end

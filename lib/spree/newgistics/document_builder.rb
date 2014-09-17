@@ -2,23 +2,27 @@ module Spree
   module Newgistics
     module DocumentBuilder
 
+      attr_accessor :case_sensivity
+
       def self.build_product(products)
+        @case_sensivity = :lower
         build_objects_xml('product', products.flatten)
       end
 
       def self.build_order(orders)
+        @case_sensivity = :upper
         build_objects_xml('order', orders.flatten)
       end
 
 
       def self.build_order_contents(order_number, sku, qty, add)
         node_name = add ? 'AddItems' : 'RemoveItems'
-        Nokogiri::XML::Builder.new do |xml|
+        Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
           xml.send('Shipment', { apiKey: api_key, orderId: order_number}) {
             xml.send(node_name){
-              xml.item{
-                xml.sku sku
-                xml.quantity qty
+              xml.Item{
+                xml.SKU sku
+                xml.Qty qty
               }
             }
           }
@@ -28,10 +32,10 @@ module Spree
       private
 
       def self.build_objects_xml(type, objects)
-        Nokogiri::XML::Builder.new do |xml|
-          xml.send(type.pluralize.camelize, { apiKey: api_key}) {
+        Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
+          xml.send(type.pluralize.camelize(@case_sensivity), { apiKey: api_key}) {
             objects.each do |object|
-              xml.send(type.camelize) {
+              xml.send(type.camelize(@case_sensivity)) {
                 required_attributes.send("#{type}_attributes").each do |key, value|
                   get_node_value(key, value, object, xml)
                 end
@@ -42,7 +46,7 @@ module Spree
       end
 
       def self.get_node_value(key, value, object, xml)
-        key = key.to_s.camelize
+        key = key.to_s.camelize(@case_sensivity)
         ## if it's a symbol is because is a method call.
         if value.kind_of?(Symbol)
           data = object.send(value)
