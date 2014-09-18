@@ -1,6 +1,6 @@
 Spree::Order.class_eval do
 
-  state_machine.after_transition to: :complete, do: :post_to_newgistics
+  after_touch :post_to_newgistics, if: :completed_at?
 
 
   def add_newgistics_shipment_content(sku, qty)
