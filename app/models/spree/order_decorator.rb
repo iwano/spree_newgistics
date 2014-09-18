@@ -1,7 +1,9 @@
 Spree::Order.class_eval do
 
+  after_update :update_newgistics_shipment_address, if: lambda { complete? && ship_address_id_changed?}
+
   def update_newgistics_shipment_address
-    document = Spree::Newgistics::DocumentBuilder.build_shipment_address(number, sku, qty, add = true)
+    document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_address(self)
     Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
   end
 
