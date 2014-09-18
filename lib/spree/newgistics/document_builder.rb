@@ -9,16 +9,16 @@ module Spree
         build_objects_xml('product', products.flatten)
       end
 
-      def self.build_order(orders)
+      def self.build_order(shipments)
         @case_sensivity = :upper
-        build_objects_xml('order', orders.flatten)
+        build_objects_xml('order', shipments.flatten, { orderID: shipments[0].order.number })
       end
 
 
       def self.build_order_contents(order_number, sku, qty, add)
         node_name = add ? 'AddItems' : 'RemoveItems'
         Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
-          xml.send('Shipment', { apiKey: api_key, orderId: order_number}) {
+          xml.send('Shipment', { apiKey: api_key, orderID: order_number}) {
             xml.send(node_name){
               xml.Item{
                 xml.SKU sku
@@ -31,11 +31,11 @@ module Spree
 
       private
 
-      def self.build_objects_xml(type, objects)
+      def self.build_objects_xml(type, objects, node_id = {})
         Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
           xml.send(type.pluralize.camelize(@case_sensivity), { apiKey: api_key}) {
             objects.each do |object|
-              xml.send(type.camelize(@case_sensivity)) {
+              xml.send(type.camelize(@case_sensivity), node_id) {
                 required_attributes.send("#{type}_attributes").each do |key, value|
                   get_node_value(key, value, object, xml)
                 end
@@ -89,7 +89,13 @@ module Spree
 
       # this method only chains the array of symbols to return expected data
       def self.chain_methods(object, methods)
-        methods.each{ |method| object = object.send(method) }
+        methods.each do |method|
+          if method.kind_of?(Hash)
+            object = object.send(method.keys[0], method.values[0])
+          else
+            object = object.send(method)
+          end
+        end
         object
       end
 

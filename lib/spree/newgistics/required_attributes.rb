@@ -38,7 +38,8 @@ module Spree
             email: [:order, :email],
             phone: [:address, :phone]
           },
-          ship_method: [:shipping_method, :admin_name],
+          order_date: [:order, :completed_at, { strftime: '%m/%d/%Y' }],
+          ship_method: 'UPSG',
           items: :line_items
       }
 
