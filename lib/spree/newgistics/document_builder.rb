@@ -9,13 +9,13 @@ module Spree
         build_objects_xml('product', products.flatten)
       end
 
-      def self.build_order(shipments)
+      def self.build_shipment(shipments)
         @case_sensivity = :upper
         build_objects_xml('order', shipments.flatten, { orderID: shipments[0].order.number })
       end
 
 
-      def self.build_order_contents(order_number, sku, qty, add)
+      def self.build_shipment_contents(order_number, sku, qty, add)
         node_name = add ? 'AddItems' : 'RemoveItems'
         Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
           xml.send('Shipment', { apiKey: api_key, orderID: order_number}) {
@@ -25,6 +25,17 @@ module Spree
                 xml.Qty qty
               }
             }
+          }
+        end.to_xml
+      end
+
+      def self.build_shipment_updated_address(order)
+        @case_sensivity = :upper
+        Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
+          xml.send('updateShipment', { apiKey: api_key, orderID: order.number}) {
+            required_attributes.address_update_attributes.each do |key, value|
+              get_node_value(key, value, order, xml)
+            end
           }
         end.to_xml
       end
