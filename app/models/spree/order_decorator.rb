@@ -18,8 +18,13 @@ Spree::Order.class_eval do
   end
 
   def post_to_newgistics
-    document = Spree::Newgistics::DocumentBuilder.build_shipment(shipments)
-    Spree::Newgistics::HTTPManager.post('/post_shipments.aspx', document)
+    if complete? && payment_state == 'paid'
+      document = Spree::Newgistics::DocumentBuilder.build_shipment(shipments)
+      response = Spree::Newgistics::HTTPManager.post('/post_shipments.aspx', document)
+      if response.status == 200
+        update_attribute(:posted_to_newgistics, true)
+      end
+    end
   end
 
 end
