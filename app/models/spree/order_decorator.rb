@@ -2,23 +2,43 @@ Spree::Order.class_eval do
 
   after_update :update_newgistics_shipment_address, if: lambda { complete? && ship_address_id_changed?}
 
+  has_many :state_changes, as: :stateful, after_add: :update_newgistics_shipment_status
+
   scope :not_in_newgistics, -> { where(posted_to_newgistics: false) }
 
+  def update_newgistics_shipment_status(state_change)
+    ## set a flag to avoid sending duplicate requests to newgistiscs API.
+    if state_change.name == 'payment'
+      document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_state(state_change)
+      Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
+    end
+  end
+
+
+  # This method is used to update both shipment address and shipment status
   def update_newgistics_shipment_address
     document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_address(self)
     Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
   end
 
+
+  ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def add_newgistics_shipment_content(sku, qty)
     document = Spree::Newgistics::DocumentBuilder.build_shipment_contents(number, sku, qty, add = true)
     Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
   end
 
+  ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def remove_newgistics_shipment_content(sku, qty)
     document = Spree::Newgistics::DocumentBuilder.build_shipment_contents(number, sku, qty, add = false)
     Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
   end
 
+
+  ## This method posts the order to newgisitcs as soon as the checkout ends, if using auto capture
+  ## the shipping status would be blank, if not using autocapture the order status would be ONHOLD,
+  ## and will be updated as soon as the order changes to 'PAID', if it success, it updates the
+  ## posted_to_newgistics flag in the order for further queue updates control.
   def post_to_newgistics
     if complete? && payment_state == 'paid'
       document = Spree::Newgistics::DocumentBuilder.build_shipment(shipments)

@@ -29,6 +29,18 @@ module Spree
         end.to_xml
       end
 
+      def self.build_shipment_updated_state(state_change)
+        @case_sensivity = :upper
+        order = state_change.stateful
+        Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|
+          xml.send('updateShipment', { apiKey: api_key, orderID: order.number}) {
+            required_attributes.shipment_state_update_attributes.each do |key, value|
+              get_node_value(key, value, state_change, xml)
+            end
+          }
+        end.to_xml
+      end
+
       def self.build_shipment_updated_address(order)
         @case_sensivity = :upper
         Nokogiri::XML::Builder.new(encoding: 'UTF-8') do |xml|

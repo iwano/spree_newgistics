@@ -8,7 +8,8 @@ module Spree
         :inventory_attributes,
         :return_attributes,
         :item_attributes,
-        :address_update_attributes
+        :address_update_attributes,
+        :shipment_state_update_attributes
       ]
 
       mattr_reader *ATTRIBUTES
@@ -44,6 +45,16 @@ module Spree
           items: :line_items
       }
 
+      @@shipment_state_update_attributes = {
+        address1: [:stateful, :ship_address, :address1],
+        city: [:stateful, :ship_address, :city],
+        state: [:stateful, :ship_address, :state, :name],
+        postal_code: [:stateful, :ship_address, :zipcode],
+        country: [:stateful, :ship_address, :country, :iso],
+        status: :newgistics_status,
+        status_notes: :newgistics_status_notes
+      }
+
       @@address_update_attributes = {
         first_name: [:ship_address, :first_name],
         last_name: [:ship_address, :last_name],
@@ -56,8 +67,6 @@ module Spree
         country: [:ship_address, :country, :iso],
         email: [:email],
         phone: [:ship_address, :phone],
-        status: '',
-        status_notes: '',
         ship_method: 'UPSG'
       }
 
