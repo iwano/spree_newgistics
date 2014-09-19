@@ -4,7 +4,7 @@ Spree::Order.class_eval do
 
   has_many :state_changes, as: :stateful, after_add: :update_newgistics_shipment_status
 
-  scope :not_in_newgistics, -> { where(posted_to_newgistics: false) }
+  scope :not_in_newgistics, -> { where(state: 'complete', posted_to_newgistics: false) }
 
   # This method is called everytime a state change in the order happens
   def update_newgistics_shipment_status(state_change)
