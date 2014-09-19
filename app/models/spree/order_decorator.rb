@@ -6,8 +6,8 @@ Spree::Order.class_eval do
 
   scope :not_in_newgistics, -> { where(posted_to_newgistics: false) }
 
+  # This method is called everytime a state change in the order happens
   def update_newgistics_shipment_status(state_change)
-    ## set a flag to avoid sending duplicate requests to newgistiscs API.
     if state_change.name == 'payment'
       document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_state(state_change)
       Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
