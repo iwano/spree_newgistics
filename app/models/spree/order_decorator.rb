@@ -46,7 +46,9 @@ Spree::Order.class_eval do
 
       if response.status == 200
         errors = Nokogiri::XML(response.body).css('errors').children.any?
-        update_attribute(:posted_to_newgistics, true) unless errors
+        if !errors
+          update_attributes({posted_to_newgistics: true, newgistics_status: 'RECEIVED'})
+        end
       end
 
     end

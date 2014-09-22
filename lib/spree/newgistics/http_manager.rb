@@ -14,10 +14,13 @@ module Spree
         end
       end
 
-      def self.get(url)
+      def self.get(url, params = {})
         @conn.get do |req|
           req.url url
           req.params['key'] = Spree::Newgistics::Config[:api_key]
+          params.each do |k,v|
+            req.params[k.to_s] = v
+          end
         end
       end
     end

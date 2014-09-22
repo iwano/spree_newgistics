@@ -67,7 +67,10 @@ module Spree
         country: [:ship_address, :country, :iso],
         email: [:email],
         phone: [:ship_address, :phone],
-        ship_method: 'UPSG'
+        ship_method: 'UPSG',
+        status: 'UPDATED',
+        status_notes: 'Address updated'
+
       }
 
       @@item_attributes = {
