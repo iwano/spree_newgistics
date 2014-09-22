@@ -8,7 +8,7 @@ Spree::Order.class_eval do
 
   # This method is called everytime a state change in the order happens
   def update_newgistics_shipment_status(state_change)
-    if state_change.name == 'payment'
+    if should_update_newgistics_state? state_change
       document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_state(state_change)
       Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
     end
@@ -52,6 +52,12 @@ Spree::Order.class_eval do
       end
 
     end
+  end
+
+  private
+
+  def should_update_newgistics_state? state_change
+    (state_change.name == 'payment' || state_change.name == 'order') && posted_to_newgistics?
   end
 
 end
