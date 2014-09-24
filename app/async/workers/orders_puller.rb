@@ -41,9 +41,7 @@ module Workers
         attributes[:ship_address_attributes].merge!({country_id: country_id}) if country_id
 
         order.assign_attributes(attributes)
-        if order.changed?
-          order.save!
-        end
+        order.save! if order.changed?
 
       end
     end
