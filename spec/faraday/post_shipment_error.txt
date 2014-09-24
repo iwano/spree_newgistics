@@ -1,0 +1,1 @@
+<?xml version='1.0' encoding='utf-8'?><response><shipments><shipment id='46905538' orderID='R585487120' /></shipments><warnings /><errors><error address1='#1'> Unable to create shipment; Address1 is empty or not present </error></errors></response>

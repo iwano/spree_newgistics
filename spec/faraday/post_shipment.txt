@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?>\r\n<response>\r\n  <shipments>\r\n    <shipment id="46905538" orderID="R585487120" />\r\n  </shipments>\r\n  <warnings />\r\n  <errors />\r\n</response>

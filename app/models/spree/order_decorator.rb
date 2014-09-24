@@ -10,7 +10,8 @@ Spree::Order.class_eval do
   def update_newgistics_shipment_status(state_change)
     if should_update_newgistics_state? state_change
       document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_state(state_change)
-      Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
+      response = Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
+      update_or_retry(response, :update_newgistics_shipment_status, state_change)
     end
   end
 
@@ -18,20 +19,23 @@ Spree::Order.class_eval do
   # This method is used to update both shipment address and shipment status
   def update_newgistics_shipment_address
     document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_address(self)
-    Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
+    response = Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
+    update_or_retry(response, :update_newgistics_shipment_address)
   end
 
 
   ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def add_newgistics_shipment_content(sku, qty)
     document = Spree::Newgistics::DocumentBuilder.build_shipment_contents(number, sku, qty, add = true)
-    Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
+    response = Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
+    update_or_retry(response, :add_newgistics_shipment_content)
   end
 
   ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def remove_newgistics_shipment_content(sku, qty)
     document = Spree::Newgistics::DocumentBuilder.build_shipment_contents(number, sku, qty, add = false)
-    Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
+    response = Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
+    update_or_retry(response, :remove_newgistics_shipment_content)
   end
 
 
@@ -43,14 +47,12 @@ Spree::Order.class_eval do
     if complete? && payment_state == 'paid'
       document = Spree::Newgistics::DocumentBuilder.build_shipment(shipments)
       response = Spree::Newgistics::HTTPManager.post('/post_shipments.aspx', document)
-
-      if response.status == 200
+      if response.status <= 299
         errors = Nokogiri::XML(response.body).css('errors').children.any?
         if !errors
           update_attributes({posted_to_newgistics: true, newgistics_status: 'RECEIVED'})
         end
       end
-
     end
   end
 
@@ -58,6 +60,18 @@ Spree::Order.class_eval do
 
   def should_update_newgistics_state? state_change
     (state_change.name == 'payment' || state_change.name == 'order') && posted_to_newgistics?
+  end
+
+  def update_success?(response)
+    response.status <= 299 && Nokogiri::XML(response.body).xpath('//success').text == 'true'
+  end
+
+  def update_or_retry(response, method, params = nil)
+    if update_success?(response)
+      update_column(:newgistics_status, 'UPDATED')
+    else
+      Workers::OrderUpdater.perform_async(self.id, method, params)
+    end
   end
 
 end
