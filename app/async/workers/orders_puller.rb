@@ -1,6 +1,7 @@
 module Workers
   class OrdersPuller < AsyncBase
     include Sidekiq::Worker
+    include ActiveSupport::Callbacks
 
     def perform
       params = {
@@ -42,7 +43,15 @@ module Workers
           attributes[:ship_address_attributes].merge!({country_id: country_id}) if country_id
           order.assign_attributes(attributes)
           order.shipments.each{ |shipment| shipment.ship! } if order.newgistics_status == 'SHIPPED' && !order.shipped?
-          order.save! if order.changed?
+          if order.changed?
+            Spree::Order.skip_callback(:update, :after, :update_newgistics_shipment_address)
+
+            order.save!
+
+            Spree::Order.set_callback(:update, :after, :update_newgistics_shipment_address)
+
+          end
+
         end
       end
     end

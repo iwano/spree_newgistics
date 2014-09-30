@@ -26,16 +26,18 @@ Spree::Order.class_eval do
 
   ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def add_newgistics_shipment_content(sku, qty)
+    
     document = Spree::Newgistics::DocumentBuilder.build_shipment_contents(number, sku, qty, add = true)
     response = Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
-    update_or_retry(response, :add_newgistics_shipment_content)
+    update_or_retry(response, :add_newgistics_shipment_content, sku, qty)
   end
 
   ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def remove_newgistics_shipment_content(sku, qty)
+    
     document = Spree::Newgistics::DocumentBuilder.build_shipment_contents(number, sku, qty, add = false)
     response = Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
-    update_or_retry(response, :remove_newgistics_shipment_content)
+    update_or_retry(response, :remove_newgistics_shipment_content, sku, qty)
   end
 
 
@@ -63,14 +65,24 @@ Spree::Order.class_eval do
   end
 
   def update_success?(response)
-    response.status <= 299 && Nokogiri::XML(response.body).xpath('//success').text == 'true'
+    response.status <= 299 && !really_a_newgistics_error?(response)
   end
 
-  def update_or_retry(response, method, params = nil)
+  def really_a_newgistics_error?(response)
+    not_really_errors = [
+        'This shipment has already been canceled.',
+        'This shipment has already been returned.'
+    ]
+    error = Nokogiri::XML(response.body).xpath('//error').text
+    success = Nokogiri::XML(response.body).xpath('//success').text == 'true'
+    !success && error.present? && !not_really_errors.include?(error)
+  end
+
+  def update_or_retry(response, method, *args)
     if update_success?(response)
       update_column(:newgistics_status, 'UPDATED')
     else
-      Workers::OrderUpdater.perform_async(self.id, method, params)
+      Workers::OrderUpdater.perform_async(self.id, method, args)
     end
   end
 
