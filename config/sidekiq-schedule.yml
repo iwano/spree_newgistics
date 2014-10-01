@@ -11,7 +11,11 @@ InventoryPuller:
   cron: '00 0 * * *'
   class: 'Workers::InventoryPuller'
 
-OrdersPuller:
+ReturnsPuller:
   cron: '00 0 * * *'
+  class: 'Workers::ReturnsPuller'
+
+OrdersPuller:
+  cron: '30 0 * * *'
   class: 'Workers::OrdersPuller'
 
