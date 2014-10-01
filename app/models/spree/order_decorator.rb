@@ -1,6 +1,6 @@
 Spree::Order.class_eval do
 
-  after_update :update_newgistics_shipment_address, if: lambda { complete? && ship_address_id_changed?}
+  after_update :update_newgistics_shipment_address, if: lambda { complete? && ship_address_id_changed? && can_update_newgistics? }
 
   has_many :state_changes, as: :stateful, after_add: :update_newgistics_shipment_status
 
@@ -8,7 +8,7 @@ Spree::Order.class_eval do
 
   # This method is called everytime a state change in the order happens
   def update_newgistics_shipment_status(state_change)
-    if should_update_newgistics_state? state_change
+    if should_update_newgistics_state?(state_change) && can_update_newgistics_state?(state_change)
       document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_state(state_change)
       response = Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
       update_or_retry(response, :update_newgistics_shipment_status, state_change)
@@ -61,7 +61,17 @@ Spree::Order.class_eval do
   private
 
   def should_update_newgistics_state? state_change
-    (state_change.name == 'payment' || state_change.name == 'order') && posted_to_newgistics?
+    (state_change.name == 'payment' || state_change.name == 'order') && state_change.next_state != 'awaiting_return' && posted_to_newgistics?
+  end
+
+  def can_update_newgistics_state?(state_change)
+    states = ['canceled', 'returned']
+    can_update_newgistics? && !states.include?(state_change.newgistics_status.downcase)
+  end
+
+  def can_update_newgistics?
+    states = ['canceled', 'returned']
+    !states.include?(state.downcase) && posted_to_newgistics?
   end
 
   def update_success?(response)
@@ -80,8 +90,11 @@ Spree::Order.class_eval do
 
   def update_or_retry(response, method, *args)
     if update_success?(response)
-      update_column(:newgistics_status, 'UPDATED')
-    else
+      status = {
+        update_newgistics_shipment_status: args[0].newgistics_status
+      }
+      update_column(:newgistics_status, status[method] || 'UPDATED')
+    elsif can_update_newgistics?
       Workers::OrderUpdater.perform_async(self.id, method, args)
     end
   end

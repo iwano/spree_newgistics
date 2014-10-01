@@ -23,7 +23,7 @@ module Workers
     def update_shipments returns
       returns.each do |returned_shipment|
         order = Spree::Order.find_by(number: returned_shipment['orderID'])
-        if order && !['returned', 'canceled'].include?(order.state)
+        if order && order.can_update_newgistics?
 
           Spree::Order.skip_callback(:update, :after, :update_newgistics_shipment_address)
           items = returned_shipment["Items"].try(:values).try(:flatten)
