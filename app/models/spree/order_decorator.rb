@@ -26,7 +26,6 @@ Spree::Order.class_eval do
 
   ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def add_newgistics_shipment_content(sku, qty)
-    
     document = Spree::Newgistics::DocumentBuilder.build_shipment_contents(number, sku, qty, add = true)
     response = Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
     update_or_retry(response, :add_newgistics_shipment_content, sku, qty)
@@ -59,7 +58,7 @@ Spree::Order.class_eval do
   end
 
   def can_update_newgistics?
-    states = ['canceled', 'returned']
+    states = ['canceled', 'returned', 'awaiting_return']
     !states.include?(state.downcase) && posted_to_newgistics?
   end
 
@@ -90,10 +89,8 @@ Spree::Order.class_eval do
 
   def update_or_retry(response, method, *args)
     if update_success?(response)
-      status = {
-        update_newgistics_shipment_status: args[0].newgistics_status
-      }
-      update_column(:newgistics_status, status[method] || 'UPDATED')
+      status = args[0].newgistics_status if args[0].respond_to? :newgistics_status
+      update_column(:newgistics_status, status || 'UPDATED')
     elsif can_update_newgistics?
       Workers::OrderUpdater.perform_async(self.id, method, args)
     end
