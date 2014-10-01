@@ -58,6 +58,11 @@ Spree::Order.class_eval do
     end
   end
 
+  def can_update_newgistics?
+    states = ['canceled', 'returned']
+    !states.include?(state.downcase) && posted_to_newgistics?
+  end
+
   private
 
   def should_update_newgistics_state? state_change
@@ -67,11 +72,6 @@ Spree::Order.class_eval do
   def can_update_newgistics_state?(state_change)
     states = ['canceled', 'returned']
     can_update_newgistics? && !states.include?(state_change.newgistics_status.downcase)
-  end
-
-  def can_update_newgistics?
-    states = ['canceled', 'returned']
-    !states.include?(state.downcase) && posted_to_newgistics?
   end
 
   def update_success?(response)
