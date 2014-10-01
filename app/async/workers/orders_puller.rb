@@ -23,6 +23,7 @@ module Workers
       shipments.each do |shipment|
         order = Spree::Order.find_by(number: shipment['OrderID'])
         if order
+          Spree::Order.skip_callback(:update, :after, :update_newgistics_shipment_address)
           state_id = Spree::State.find_by(abbr: shipment['State']).try(:id)
           country_id = Spree::Country.find_by(iso_name: shipment['Country']).try(:id)
           attributes = {
@@ -44,12 +45,8 @@ module Workers
           order.assign_attributes(attributes)
           order.shipments.each{ |shipment| shipment.ship! } if order.newgistics_status == 'SHIPPED' && !order.shipped?
           if order.changed?
-            Spree::Order.skip_callback(:update, :after, :update_newgistics_shipment_address)
-
             order.save!
-
             Spree::Order.set_callback(:update, :after, :update_newgistics_shipment_address)
-
           end
 
         end
