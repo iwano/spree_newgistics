@@ -93,13 +93,13 @@ module Workers
     end
 
     def find_supplier(name)
-      @brands ||= Spree::Taxonomy.find_by(name: 'Brands').taxons
+      @brands ||= Spree::Taxonomy.find_by(name: 'Brands').root.children
       @brands.reload.where("LOWER(spree_taxons.name) = LOWER('#{name.downcase}')").first
     end
 
     def create_supplier(name)
-      @brands ||= Spree::Taxonomy.find_by(name: 'Brands').taxons
-      @brands.reload.create!(name: name.downcase.camelcase, permalink: "brands/#{name.downcase.to_param}")
+      @brands ||= Spree::Taxonomy.find_by(name: 'Brands').root.children
+      @brands.reload.create!(name: name.downcase.camelcase, permalink: "brands/#{name.downcase.split(' ').join('-')}")
     end
 
     def disable_callbacks
