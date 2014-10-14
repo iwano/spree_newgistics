@@ -18,7 +18,7 @@ module Workers
       log = File.open("#{Rails.root}/log/missing_newgistics_products.log", 'w')
       disable_callbacks
       products.each do |product|
-        color_code = product['sku'].match(/-(\d*)$/).try(:[],1).to_s
+          color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
 
         ## keep moving if variant exists
         next if Spree::Variant.find_by(sku: product['sku'])
@@ -47,7 +47,7 @@ module Workers
                                          })
             else
               puts '*'*100
-              puts "no master variant found, creating new product and asigning a new sku #{master_variant_sku}"
+              puts "no master variant found, creating new product and asigning a new variant, setting the master varianr #{master_variant_sku}"
               spree_product = Spree::Product.new(get_attributes_from(product))
               spree_product.taxons << supplier_from(product)
               spree_product.master.assign_attributes({ posted_to_newgistics: true,
@@ -56,6 +56,15 @@ module Workers
                                                    item_category_id: item_category_id,
                                                    vendor_sku: product['supplierCode'],
                                                      })
+
+              spree_variant = Spree::Variant.new(get_attributes_from(product))
+              spree_variant.assign_attributes({posted_to_newgistics: true,
+                                               upc: spree_product.upc,
+                                               item_category_id: item_category_id,
+                                               vendor_sku: product['supplierCode']})
+              spree_variant.save!
+
+              spree_product.variants << spree_variant
               spree_product.save!
             end
 
