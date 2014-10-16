@@ -19,8 +19,6 @@ module Workers
       disable_callbacks
       products.each do |product|
 
-        next if product['isActive'] == 'false'
-
         begin
           spree_variant = Spree::Variant.find_by(sku: product['sku'])
 
