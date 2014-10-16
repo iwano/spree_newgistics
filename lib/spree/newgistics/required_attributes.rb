@@ -16,7 +16,6 @@ module Spree
 
       @@product_attributes = {
           sku: :sku,
-          description: :description,
           width: :width,
           height: :height,
           weight: :weight,
