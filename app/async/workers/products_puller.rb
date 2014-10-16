@@ -20,10 +20,12 @@ module Workers
       products.each do |product|
           color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
 
-        ## keep moving if variant exists
+        ## keep moving if variant already exists
         next if Spree::Variant.find_by(sku: product['sku'])
 
         begin
+
+          item_category_id = product["category"].present? ? Spree::ItemCategory.find_or_create_by!(name: product["category"].downcase.camelcase).id : nil
 
           ## if sku has color code it means we need to build
           if color_code.present?
@@ -31,7 +33,6 @@ module Workers
             product_code = product['sku'].match(/^(.*)-/)[1].to_s
             master_variant_sku = "#{product_code}-00"
             master_variant = Spree::Variant.find_by(sku: master_variant_sku)
-            item_category_id = Spree::ItemCategory.find_or_create_by!(name: product["category"].downcase.camelcase).id
 
             ## if we already have a master variant it means a product has been created
             ## let's just add a new variant to the product.
@@ -40,28 +41,34 @@ module Workers
             if master_variant
               puts '*'*100
               puts "master variant found, adding variants to product #{master_variant.product.id}"
-              variant = master_variant.product.variants.create!(get_attributes_from(product))
-              variant.update_attributes!({ item_category_id: item_category_id,
+              variant = master_variant.product.variants.new(get_attributes_from(product))
+              variant.assign_attributes({ item_category_id: item_category_id,
                                            posted_to_newgistics: true,
                                            vendor_sku: product['supplierCode'],
+                                           vendor: product['supplier'],
+                                           newgistics_active: product['isActive'] == 'true' ? true : false
                                          })
+              variant.save!
             else
               puts '*'*100
               puts "no master variant found, creating new product and asigning a new variant, setting the master varianr #{master_variant_sku}"
               spree_product = Spree::Product.new(get_attributes_from(product))
-              spree_product.taxons << supplier_from(product)
+              spree_product.taxons << supplier_from(product) if product['supplier'].present?
               spree_product.master.assign_attributes({ posted_to_newgistics: true,
-                                                   upc: spree_product.upc,
-                                                   sku: master_variant_sku,
-                                                   item_category_id: item_category_id,
-                                                   vendor_sku: product['supplierCode'],
-                                                     })
+                                                       item_category_id: item_category_id,
+                                                       upc: spree_product.upc,
+                                                       sku: master_variant_sku,
+                                                       vendor_sku: product['supplierCode'],
+                                                       vendor: product['supplier'],
+                                                       newgistics_active: product['isActive'] == 'true' ? true : false})
 
               spree_variant = Spree::Variant.new(get_attributes_from(product))
               spree_variant.assign_attributes({posted_to_newgistics: true,
-                                               upc: spree_product.upc,
                                                item_category_id: item_category_id,
-                                               vendor_sku: product['supplierCode']})
+                                               upc: spree_product.upc,
+                                               vendor_sku: product['supplierCode'],
+                                               vendor: product['supplier'],
+                                               newgistics_active: product['isActive'] == 'true' ? true : false})
               spree_variant.save!
 
               spree_product.variants << spree_variant
@@ -71,15 +78,19 @@ module Workers
           else
             puts '*'*100
             puts "creating a new product without variants for #{product["sku"]}"
-            product = Spree::Product.create!(get_attributes_from(product))
-            master = product.master
+            spree_product = Spree::Product.new(get_attributes_from(product))
+            spree_product.taxons << supplier_from(product) if product['supplier'].present?
+            spree_product.save!
+            master = spree_product.master
             master.update_attributes!({posted_to_newgistics: true,
                                        item_category_id: item_category_id,
+                                       upc: product['upc'],
                                        vendor_sku: product['supplierCode'],
-                                       upc: product['upc']})
+                                       vendor: product['supplier'],
+                                       newgistics_active: product['isActive'] == 'true' ? true : false})
           end
 
-        rescue ActiveRecord::ActiveRecordError, NameError => e
+        rescue StandardError => e
           log.write("#{product['sku']} = #{e.message}\n")
         end
 
@@ -93,13 +104,15 @@ module Workers
     end
 
     def find_supplier(name)
-      @brands ||= Spree::Taxonomy.find_by(name: 'Brands').root.children
+      @taxonomy ||= Spree::Taxonomy.find_by(name: 'Brands')
+      @brands ||= @taxonomy.root.children
       @brands.reload.where("LOWER(spree_taxons.name) = LOWER('#{name.downcase}')").first
     end
 
     def create_supplier(name)
-      @brands ||= Spree::Taxonomy.find_by(name: 'Brands').root.children
-      @brands.reload.create!(name: name.downcase.camelcase, permalink: "brands/#{name.downcase.split(' ').join('-')}")
+      @taxonomy ||= Spree::Taxonomy.find_by(name: 'Brands')
+      @brands ||= @taxonomy.root.children
+      @brands.reload.create!(name: name.downcase.camelcase, permalink: "brands/#{name.downcase.split(' ').join('-')}", taxonomy_id: @taxonomy.id)
     end
 
     def disable_callbacks
