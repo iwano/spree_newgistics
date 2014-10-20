@@ -19,3 +19,7 @@ OrdersPuller:
   cron: '30 0 * * *'
   class: 'Workers::OrdersPuller'
 
+ProductsPuller:
+  cron: '00 */2 * * *'
+  class: 'Workers::ProductsPuller'
+
