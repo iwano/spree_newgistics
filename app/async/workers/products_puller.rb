@@ -3,7 +3,6 @@ module Workers
     include Sidekiq::Worker
 
     def perform
-
       response = Spree::Newgistics::HTTPManager.get('products.aspx')
       if response.status == 200
         xml = Nokogiri::XML(response.body).to_xml
@@ -15,15 +14,14 @@ module Workers
     end
 
     def save_products(products)
-      log = File.open("#{Rails.root}/log/missing_newgistics_products.log", 'w')
       disable_callbacks
       products.each do |product|
-
         begin
+          log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'a')
           spree_variant = Spree::Variant.find_by(sku: product['sku'])
 
           if spree_variant
-
+            log << "<p class='processing'> updating sku: #{product['sku']} <p/>"
             spree_variant.update_attributes!({ upc: product['upc'],
                                                cost_price: product['value'].to_f,
                                                price: product['retailValue'].to_f,
@@ -51,14 +49,18 @@ module Workers
               ## else create a new product, let spree callbacks create the master variant
               ## and change the sku to the one we want.
               if master_variant
+                log << "<p class='processing'> creating color code: #{ product['sku'] } for sku: #{master_variant_sku} <p/>"
+
                 variant = master_variant.product.variants.new(get_attributes_from(product))
                 variant.assign_attributes(variant_attributes_from(product))
                 variant.save!
               else
                 spree_product = Spree::Product.new(get_attributes_from(product))
                 spree_product.taxons << supplier_from(product) if product['supplier'].present?
+                log << "<p class='processing'> creating created master sku for grouping: #{master_variant_sku} <p/>"
                 spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku }))
 
+                log << "<p class='processing'> creating created color code: #{ product['sku'] } for sku: #{master_variant_sku} <p/>"
                 spree_variant = Spree::Variant.new(get_attributes_from(product))
                 spree_variant.assign_attributes(variant_attributes_from(product))
                 spree_variant.save!
@@ -68,20 +70,22 @@ module Workers
               end
 
             else
+              log << "<p class='processing'> creating created sku: #{product['sku']} <p/>"
               spree_product = Spree::Product.new(get_attributes_from(product))
               spree_product.taxons << supplier_from(product) if product['supplier'].present?
               spree_product.save!
               master = spree_product.master
               master.update_attributes!(variant_attributes_from(product))
             end
+            log << "<p class='sucess'> successfully created sku: #{product['sku']} <p/>"
           end
         rescue StandardError => e
-          log.write("#{product['sku']} = #{e.message}\n")
+          log << "<p class='error'> ERROR: sku: #{product['sku']} failed due to: #{e.message} <p/>"
+        ensure
+          log.close
         end
-
       end
       enable_callbacks
-      log.close
     end
 
     def supplier_from(product)
@@ -104,14 +108,14 @@ module Workers
       Spree::Variant.skip_callback(:create, :after, :post_to_newgistics)
       Spree::Variant.skip_callback(:update, :after, :post_to_newgistics)
       Spree::Variant.skip_callback(:save, :after, :enqueue_product_for_reindex)
-      Spree::Product.skip_callback(:save, :after, :enqueue_for_reindex)
+      Spree::Product.skip_callback(:commit, :after, :enqueue_for_reindex)
     end
 
     def enable_callbacks
       Spree::Variant.set_callback(:create, :after, :post_to_newgistics)
       Spree::Variant.set_callback(:update, :after, :post_to_newgistics)
       Spree::Variant.set_callback(:save, :after, :enqueue_product_for_reindex)
-      Spree::Product.set_callback(:save, :after, :enqueue_for_reindex)
+      Spree::Product.set_callback(:commit, :after, :enqueue_for_reindex)
     end
 
     def variant_attributes_from(product)
