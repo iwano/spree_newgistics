@@ -71,11 +71,24 @@ module Workers
 
             else
               log << "<p class='processing'> creating created sku: #{product['sku']} <p/>"
+
               spree_product = Spree::Product.new(get_attributes_from(product))
               spree_product.taxons << supplier_from(product) if product['supplier'].present?
-              spree_product.save!
+
               master = spree_product.master
+
+
+              spree_product.save!
               master.update_attributes!(variant_attributes_from(product))
+
+              additional_variant = master.dup
+              additional_variant.is_master = false
+              additional_variant.save!
+
+              spree_product.variants << additional_variant
+              spree_product.save!
+              master.update_attributes!({ sku: "#{product['sku']}-00" })
+
             end
             log << "<p class='sucess'> successfully created sku: #{product['sku']} <p/>"
           end
@@ -108,7 +121,7 @@ module Workers
       Spree::Variant.skip_callback(:create, :after, :post_to_newgistics)
       Spree::Variant.skip_callback(:update, :after, :post_to_newgistics)
       Spree::Variant.skip_callback(:save, :after, :enqueue_product_for_reindex)
-      Spree::Variant.skip_callback(:create, :after, :ensure_color_code)
+      Spree::Variant.skip_callback(:create, :before, :ensure_color_code)
       Spree::Product.skip_callback(:commit, :after, :enqueue_for_reindex)
     end
 
@@ -116,7 +129,7 @@ module Workers
       Spree::Variant.set_callback(:create, :after, :post_to_newgistics)
       Spree::Variant.set_callback(:update, :after, :post_to_newgistics)
       Spree::Variant.set_callback(:save, :after, :enqueue_product_for_reindex)
-      Spree::Variant.set_callback(:create, :after, :ensure_color_code)
+      Spree::Variant.set_callback(:create, :before, :ensure_color_code)
       Spree::Product.set_callback(:commit, :after, :enqueue_for_reindex)
     end
 
