@@ -17,7 +17,7 @@ module Workers
       disable_callbacks
       products.each do |product|
         begin
-          log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'a')
+          log = Spree::Newgistics::Log.find_or_create_by job_id: self.jid
           spree_variant = Spree::Variant.find_by(sku: product['sku'])
 
           if spree_variant
@@ -43,6 +43,7 @@ module Workers
               product_code = product['sku'].match(/^(.*)-/)[1].to_s
               master_variant_sku = "#{product_code}-00"
               master_variant = Spree::Variant.find_by(sku: master_variant_sku)
+
 
               ## if we already have a master variant it means a product has been created
               ## let's just add a new variant to the product.
@@ -94,8 +95,6 @@ module Workers
           end
         rescue StandardError => e
           log << "<p class='error'> ERROR: sku: #{product['sku']} failed due to: #{e.message} <p/>"
-        ensure
-          log.close
         end
       end
       enable_callbacks
