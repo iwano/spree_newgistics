@@ -20,6 +20,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'faraday'
   s.add_dependency 'sidekiq'
   s.add_dependency 'sidekiq-cron', '~> 0.2.0'
+  s.add_dependency 'sidekiq-status'
 
   s.add_development_dependency 'capybara', '~> 2.1'
   s.add_development_dependency 'coffee-rails'

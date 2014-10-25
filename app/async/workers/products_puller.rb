@@ -1,6 +1,8 @@
 module Workers
   class ProductsPuller < AsyncBase
     include Sidekiq::Worker
+    include Sidekiq::Status::Worker
+
 
     def perform
       response = Spree::Newgistics::HTTPManager.get('products.aspx')
@@ -10,18 +12,22 @@ module Workers
         if products
           save_products(products.values.flatten)
         end
+      else
+        Spree::Newgistics::Import.find_or_create_by(job_id: job_id,  details: 'Newgistics request failed')
       end
     end
 
     def save_products(products)
+      total 100
+      step = 100.0 / products.size
       disable_callbacks
-      products.each do |product|
+      products.each_with_index do |product, index|
         begin
-          log = Spree::Newgistics::Log.find_or_create_by job_id: self.jid
+          log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'a')
           spree_variant = Spree::Variant.find_by(sku: product['sku'])
 
           if spree_variant
-            log << "<p class='processing'> updating sku: #{product['sku']} <p/>"
+            log << "updating sku: #{product['sku']}\n"
             spree_variant.update_attributes!({ upc: product['upc'],
                                                cost_price: product['value'].to_f,
                                                price: product['retailValue'].to_f,
@@ -44,13 +50,12 @@ module Workers
               master_variant_sku = "#{product_code}-00"
               master_variant = Spree::Variant.find_by(sku: master_variant_sku)
 
-
               ## if we already have a master variant it means a product has been created
               ## let's just add a new variant to the product.
               ## else create a new product, let spree callbacks create the master variant
               ## and change the sku to the one we want.
               if master_variant
-                log << "<p class='processing'> creating color code: #{ product['sku'] } for sku: #{master_variant_sku} <p/>"
+                log << "creating color code: #{ product['sku'] } for sku: #{master_variant_sku}\n"
 
                 variant = master_variant.product.variants.new(get_attributes_from(product))
                 variant.assign_attributes(variant_attributes_from(product))
@@ -58,10 +63,10 @@ module Workers
               else
                 spree_product = Spree::Product.new(get_attributes_from(product))
                 spree_product.taxons << supplier_from(product) if product['supplier'].present?
-                log << "<p class='processing'> creating created master sku for grouping: #{master_variant_sku} <p/>"
+                log << "creating created master sku for grouping: #{master_variant_sku}\n"
                 spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku }))
 
-                log << "<p class='processing'> creating created color code: #{ product['sku'] } for sku: #{master_variant_sku} <p/>"
+                log << "creating created color code: #{ product['sku'] } for sku: #{master_variant_sku}\n"
                 spree_variant = Spree::Variant.new(get_attributes_from(product))
                 spree_variant.assign_attributes(variant_attributes_from(product))
                 spree_variant.save!
@@ -71,7 +76,7 @@ module Workers
               end
 
             else
-              log << "<p class='processing'> creating created sku: #{product['sku']} <p/>"
+              log << "creating created sku: #{product['sku']}\n"
 
               spree_product = Spree::Product.new(get_attributes_from(product))
               spree_product.taxons << supplier_from(product) if product['supplier'].present?
@@ -91,13 +96,28 @@ module Workers
               master.update_attributes!({ sku: "#{product['sku']}-00" })
 
             end
-            log << "<p class='sucess'> successfully created sku: #{product['sku']} <p/>"
+            log << "SUCCESS: created sku: #{product['sku']}\n"
           end
         rescue StandardError => e
-          log << "<p class='error'> ERROR: sku: #{product['sku']} failed due to: #{e.message} <p/>"
+          log << "ERROR: sku: #{product['sku']} failed due to: #{e.message}\n"
+        ensure
+          log.close
         end
+        progress_at(step * (index + 1)) if index % 5 == 0
       end
+      progress_at(100)
+      import.log = File.new("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'r')
+      import.save
       enable_callbacks
+    end
+
+    def progress_at(progress)
+      import.update_attribute(:progress, progress)
+      at progress
+    end
+
+    def import
+      @import ||= Spree::Newgistics::Import.find_or_create_by(job_id: self.jid)
     end
 
     def supplier_from(product)
