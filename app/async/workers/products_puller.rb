@@ -55,7 +55,7 @@ module Workers
               ## else create a new product, let spree callbacks create the master variant
               ## and change the sku to the one we want.
               if master_variant
-                log << "creating color code: #{ product['sku'] } for sku: #{master_variant_sku}\n"
+                log << "creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
 
                 variant = master_variant.product.variants.new(get_attributes_from(product))
                 variant.assign_attributes(variant_attributes_from(product))
@@ -63,10 +63,10 @@ module Workers
               else
                 spree_product = Spree::Product.new(get_attributes_from(product))
                 spree_product.taxons << supplier_from(product) if product['supplier'].present?
-                log << "creating created master sku for grouping: #{master_variant_sku}\n"
+                log << "creating  master sku for grouping: #{master_variant_sku}...\n"
                 spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku }))
 
-                log << "creating created color code: #{ product['sku'] } for sku: #{master_variant_sku}\n"
+                log << "creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
                 spree_variant = Spree::Variant.new(get_attributes_from(product))
                 spree_variant.assign_attributes(variant_attributes_from(product))
                 spree_variant.save!
@@ -76,7 +76,7 @@ module Workers
               end
 
             else
-              log << "creating created sku: #{product['sku']}\n"
+              log << "creating  master sku for grouping: #{product['sku']}-00...\n"
 
               spree_product = Spree::Product.new(get_attributes_from(product))
               spree_product.taxons << supplier_from(product) if product['supplier'].present?
@@ -86,6 +86,8 @@ module Workers
 
               spree_product.save!
               master.update_attributes!(variant_attributes_from(product))
+
+              log << "creating color code #{product['sku']} for master sku: #{product['sku']}-00...\n"
 
               additional_variant = master.dup
               additional_variant.is_master = false
