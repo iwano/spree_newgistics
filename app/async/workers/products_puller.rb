@@ -25,6 +25,8 @@ module Workers
         begin
           log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'a')
           spree_variant = Spree::Variant.find_by(sku: product['sku'])
+          item_category_id = Spree::ItemCategory.find_or_create_by(name: product["supplier"]).id if product['supplier'].present?
+
 
           if spree_variant
             log << "updating sku: #{product['sku']}\n"
@@ -37,7 +39,8 @@ module Workers
                                                depth: product['depth'].to_f,
                                                vendor_sku: product['supplierCode'],
                                                vendor: product['supplier'],
-                                               newgistics_active: product['isActive'] == 'true' ? true : false })
+                                               newgistics_active: product['isActive'] == 'true' ? true : false,
+                                               item_category_id: item_category_id })
           else
 
             color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
@@ -58,17 +61,16 @@ module Workers
                 log << "creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
 
                 variant = master_variant.product.variants.new(get_attributes_from(product))
-                variant.assign_attributes(variant_attributes_from(product))
+                variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
                 variant.save!
               else
                 spree_product = Spree::Product.new(get_attributes_from(product))
-                spree_product.taxons << supplier_from(product) if product['supplier'].present?
                 log << "creating  master sku for grouping: #{master_variant_sku}...\n"
                 spree_product.master.assign_attributes(variant_attributes_from(product).merge({ sku: master_variant_sku }))
 
                 log << "creating color code: #{ product['sku'] } for master sku: #{master_variant_sku}...\n"
                 spree_variant = Spree::Variant.new(get_attributes_from(product))
-                spree_variant.assign_attributes(variant_attributes_from(product))
+                spree_variant.assign_attributes(variant_attributes_from(product).merge({item_category_id: item_category_id}))
                 spree_variant.save!
 
                 spree_product.variants << spree_variant
@@ -79,8 +81,6 @@ module Workers
               log << "creating  master sku for grouping: #{product['sku']}-00...\n"
 
               spree_product = Spree::Product.new(get_attributes_from(product))
-              spree_product.taxons << supplier_from(product) if product['supplier'].present?
-
               master = spree_product.master
 
 
@@ -91,6 +91,7 @@ module Workers
 
               additional_variant = master.dup
               additional_variant.is_master = false
+              additional_variant.item_category_id = item_category_id
               additional_variant.save!
 
               spree_product.variants << additional_variant
@@ -123,6 +124,7 @@ module Workers
     end
 
     def supplier_from(product)
+      Spree::ItemCategory.find_or_create_by(name: product["supplier"])
       find_supplier(product['supplier']) || create_supplier(product["supplier"])
     end
 
