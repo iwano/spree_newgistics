@@ -39,7 +39,7 @@ module Workers
                                                depth: product['depth'].to_f,
                                                vendor_sku: product['supplierCode'],
                                                vendor: product['supplier'],
-                                               newgistics_active: product['isActive'] == 'true' ? true : false,
+                                               newgistics_active: product['isActive'] == 'true',
                                                item_category_id: item_category_id })
           else
 
@@ -165,7 +165,7 @@ module Workers
           upc: product['upc'],
           vendor_sku: product['supplierCode'],
           vendor: product['supplier'],
-          newgistics_active: product['isActive'] == 'true' ? true : false
+          newgistics_active: product['isActive'] == 'true'
       }
     end
 
