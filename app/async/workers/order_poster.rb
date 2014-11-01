@@ -2,6 +2,8 @@ module Workers
   class OrderPoster < AsyncBase
     include Sidekiq::Worker
 
+    sidekiq_options retry: 3
+
     def perform(order_id)
       order = Spree::Order.find(order_id)
       if order.complete? && order.payment_state == 'paid'
