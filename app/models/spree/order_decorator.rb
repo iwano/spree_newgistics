@@ -45,16 +45,7 @@ Spree::Order.class_eval do
   ## and will be updated as soon as the order changes to 'PAID', if it success, it updates the
   ## posted_to_newgistics flag in the order for further queue updates control.
   def post_to_newgistics
-    if complete? && payment_state == 'paid'
-      document = Spree::Newgistics::DocumentBuilder.build_shipment(shipments)
-      response = Spree::Newgistics::HTTPManager.post('/post_shipments.aspx', document)
-      if response.status <= 299
-        errors = Nokogiri::XML(response.body).css('errors').children.any?
-        if !errors
-          update_attributes({posted_to_newgistics: true, newgistics_status: 'RECEIVED'})
-        end
-      end
-    end
+    Workers::OrderPoster.perform_async self.id
   end
 
   def can_update_newgistics?
