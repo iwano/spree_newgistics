@@ -12,6 +12,8 @@ module Workers
           if !errors
             order.update_attributes({posted_to_newgistics: true, newgistics_status: 'RECEIVED'})
           end
+        elsif response.status > 399
+          raise "Newgistics response failed, status: #{response.status}"
         end
       end
     end
