@@ -16,7 +16,7 @@ module Workers
 
     def update_inventory(newgistics_stock_items)
       newgistics_stock_items.each do |newgistic_stock_item|
-        variant = Spree::Variant.find_by(sku: newgistic_stock_item["sku"])
+        variant = Spree::Variant.where(is_master: false).find_by(sku: newgistic_stock_item["sku"])
         next unless variant
         ## Since newgistics is the only stock location, set 1 as stock_location id.
         ## TODO: add support for multiple stock locations.
