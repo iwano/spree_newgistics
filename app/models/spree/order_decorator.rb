@@ -45,7 +45,9 @@ Spree::Order.class_eval do
   ## and will be updated as soon as the order changes to 'PAID', if it success, it updates the
   ## posted_to_newgistics flag in the order for further queue updates control.
   def post_to_newgistics
-    Workers::OrderPoster.perform_async self.id
+    if complete? && payment_state == 'paid'
+      Workers::OrderPoster.perform_async self.id
+    end
   end
 
   def can_update_newgistics?
