@@ -33,7 +33,6 @@ Spree::Order.class_eval do
 
   ## This method is called whenever order contents are updated, this is triggered on the after update callback for line items quantity
   def remove_newgistics_shipment_content(sku, qty)
-    
     document = Spree::Newgistics::DocumentBuilder.build_shipment_contents(number, sku, qty, add = false)
     response = Spree::Newgistics::HTTPManager.post('/update_shipment_contents.aspx', document)
     update_or_retry(response, :remove_newgistics_shipment_content, sku, qty)
@@ -45,7 +44,15 @@ Spree::Order.class_eval do
   ## and will be updated as soon as the order changes to 'PAID', if it success, it updates the
   ## posted_to_newgistics flag in the order for further queue updates control.
   def post_to_newgistics
-    Workers::OrderPoster.perform_async self.id
+    if complete? && payment_state == 'paid'
+      Workers::OrderPoster.perform_async(self.id)
+    end
+  end
+
+  def cancel_in_newgistics
+    document = Spree::Newgistics::DocumentBuilder.build_shipment_cancelation(self)
+    response = Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
+    update_or_retry(response, :cancel_in_newgistics)
   end
 
   def can_update_newgistics?
@@ -81,6 +88,7 @@ Spree::Order.class_eval do
   def update_or_retry(response, method, *args)
     if update_success?(response)
       status = args[0].newgistics_status if args[0].respond_to? :newgistics_status
+      status = 'CANCELED' if method == :cancel_in_newgistics
       update_column(:newgistics_status, status || 'UPDATED')
     elsif can_update_newgistics?
       Workers::OrderUpdater.perform_async(self.id, method, args)

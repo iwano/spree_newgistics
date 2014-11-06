@@ -9,7 +9,8 @@ module Spree
         :return_attributes,
         :item_attributes,
         :address_update_attributes,
-        :shipment_state_update_attributes
+        :shipment_state_update_attributes,
+        :shipment_cancel_attributes
       ]
 
       mattr_reader *ATTRIBUTES
@@ -44,6 +45,7 @@ module Spree
           items: :line_items
       }
 
+      #receives state change
       @@shipment_state_update_attributes = {
         address1: [:stateful, :ship_address, :address1],
         city: [:stateful, :ship_address, :city],
@@ -54,6 +56,18 @@ module Spree
         status_notes: :newgistics_status_notes
       }
 
+      @@shipment_cancel_attributes = {
+          address1: [:ship_address, :address1],
+          city: [:ship_address, :city],
+          state: [:ship_address, :state, :name],
+          postal_code: [:ship_address, :zipcode],
+          country: [:ship_address, :country, :iso],
+          status: 'CANCELED',
+          status_notes: 'ORDER CANCELED BY ADMIN'
+      }
+
+
+      #receives order
       @@address_update_attributes = {
         first_name: [:ship_address, :first_name],
         last_name: [:ship_address, :last_name],

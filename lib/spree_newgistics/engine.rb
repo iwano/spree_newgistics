@@ -24,6 +24,7 @@ module SpreeNewgistics
     config.after_initialize do
       ## hacky way to set the transition, if by any reason the project in which this gem is being used removes a checkout step in a decorator or something, the callbacks would be deleted, so this is a 'safe' way to set the callbacks.
       Spree::Order.state_machine.after_transition to: :complete, do: :post_to_newgistics
+      Spree::Order.state_machine.after_transition to: :canceled, do: :cancel_in_newgistics
     end
 
     config.to_prepare &method(:activate).to_proc

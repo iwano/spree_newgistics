@@ -7,7 +7,8 @@ Spree::StateChange.class_eval do
       balance_due: 'ONHOLD',
       failed: 'ONHOLD',
       canceled: 'CANCELED',
-      shipped: 'SHIPPED'}[next_state.to_sym] || ''
+      shipped: 'SHIPPED',
+      returned: 'RETURNED'}[next_state.to_sym] || ''
   end
 
   def newgistics_status_notes
