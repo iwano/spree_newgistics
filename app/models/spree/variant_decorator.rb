@@ -5,6 +5,11 @@ Spree::Variant.class_eval do
 
   scope :not_in_newgistics, -> { where(posted_to_newgistics: false, is_master: false) }
 
+
+  def newgistics_class
+    shipping_category.name == 'Hazardous' ? 'ORM-D' : ''
+  end
+
   ## This method posts the new variant to newgistics, if it success, it updates the
   ## posted_to_newgistics flag in the variant for further queue updates control.
   def post_to_newgistics

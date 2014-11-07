@@ -26,8 +26,7 @@ module Workers
           log = File.open("#{Rails.root}/log/#{self.jid}_newgistics_import.log", 'a')
           spree_variant = Spree::Variant.find_by(sku: product['sku'])
           item_category_id = Spree::ItemCategory.find_or_create_by(name: product["supplier"]).id if product['supplier'].present?
-
-
+          shipping_category_id = Spree::ShippingCategory.find_by(name: 'Hazardous').id if product['customFields'] && (product['customFields']['hazMatClass'].eql?('ORM-D') || product['customFields']['HazMatClass'].eql?('ORM-D'))
           if spree_variant
             log << "updating sku: #{product['sku']}\n"
             spree_variant.update_attributes!({ upc: product['upc'],
@@ -40,7 +39,10 @@ module Workers
                                                vendor_sku: product['supplierCode'],
                                                vendor: product['supplier'],
                                                newgistics_active: product['isActive'] == 'true',
-                                               item_category_id: item_category_id })
+                                               item_category_id: item_category_id
+                                             })
+            spree_variant.product.shipping_category_id = shipping_category_id || spree_variant.shipping_category_id
+            spree_variant.product.save!
           else
 
             color_code = product['sku'].match(/-([^-]*)$/).try(:[],1).to_s
