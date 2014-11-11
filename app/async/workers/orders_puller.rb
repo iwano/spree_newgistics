@@ -5,7 +5,7 @@ module Workers
 
     def perform
       params = {
-          startReceivedTimeStamp: 1.day.ago.strftime('%Y-%m-%d'),
+          startReceivedTimeStamp: 1.week.ago.strftime('%Y-%m-%d'),
           EndReceivedTimeStamp: Date.tomorrow.strftime('%Y-%m-%d')
       }
 
