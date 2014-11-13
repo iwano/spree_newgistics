@@ -1,5 +1,7 @@
 Spree::StateChange.class_eval do
 
+
+
   def newgistics_status
     #Change only between UPDATED and ONHOLD, which seems to be the only relevant statuses
     #for shipments updates via api, every other status code change belong to newgisitcs.
