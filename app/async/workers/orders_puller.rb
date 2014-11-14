@@ -49,7 +49,7 @@ module Workers
             attributes[:ship_address_attributes].merge!({state_id: state_id}) if state_id
             attributes[:ship_address_attributes].merge!({country_id: country_id}) if country_id
             order.assign_attributes(attributes)
-            order.shipments.update_all(tracking: shipment['tracking'])
+            order.shipments.update_all(tracking: shipment['Tracking'])
             log << "updating order status\n"
             order.cancel! if order.newgistics_status == 'CANCELED' && !order.canceled?
             log << "updating shipment status\n"
