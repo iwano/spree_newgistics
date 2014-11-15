@@ -8,10 +8,11 @@ Spree::Order.class_eval do
 
   # This method is called everytime a state change in the order happens
   def update_newgistics_shipment_status(state_change)
-    if should_update_newgistics_state?(state_change) && can_update_newgistics_state?(state_change)
-      document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_state(state_change)
+    real_state_change = state_change.kind_of?(Fixnum) ? Spree::StateChange.find(state_change) : state_change
+    if should_update_newgistics_state?(real_state_change) && can_update_newgistics_state?(real_state_change)
+      document = Spree::Newgistics::DocumentBuilder.build_shipment_updated_state(real_state_change)
       response = Spree::Newgistics::HTTPManager.post('/update_shipment_address.aspx', document)
-      update_or_retry(response, :update_newgistics_shipment_status, state_change)
+      update_or_retry(response, :update_newgistics_shipment_status, real_state_change.id)
     end
   end
 
