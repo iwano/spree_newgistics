@@ -1,7 +1,7 @@
 Spree::Variant.class_eval do
 
-  after_create :post_to_newgistics, unless: lambda { |v| v.is_master? }
-  after_update :post_to_newgistics, unless: lambda { |v| v.is_master? }
+  after_create :post_to_newgistics, unless: lambda { |v| v.is_master? && !Rails.env.production? }
+  after_update :post_to_newgistics, unless: lambda { |v| v.is_master? && !Rails.env.production? }
 
   scope :not_in_newgistics, -> { where(posted_to_newgistics: false, is_master: false) }
 
