@@ -24,6 +24,7 @@ module Workers
         if stock_item
           stock_item.update_column(:count_on_hold, newgistic_stock_item['pendingQuantity'].to_i)
           stock_item.update_column(:count_on_hand, newgistic_stock_item['availableQuantity'].to_i)
+          variant.touch
         end
       end
     end
