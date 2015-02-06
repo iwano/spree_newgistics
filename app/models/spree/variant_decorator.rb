@@ -1,7 +1,12 @@
 Spree::Variant.class_eval do
 
+<<<<<<< Updated upstream
   after_create :post_to_newgistics
   after_update :post_to_newgistics
+=======
+  after_create :post_to_newgistics, if: lambda { |v| !v.is_master? && (!Rails.env.test? || ENV["ENABLE_NEWGISTICS"]) }
+  after_update :post_to_newgistics, if: lambda { |v| !v.is_master? && (!Rails.env.test? || ENV["ENABLE_NEWGISTICS"]) }
+>>>>>>> Stashed changes
 
   scope :not_in_newgistics, -> { where(posted_to_newgistics: false) }
 
