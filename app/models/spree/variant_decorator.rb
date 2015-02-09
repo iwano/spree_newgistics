@@ -25,7 +25,7 @@ Spree::Variant.class_eval do
   private
 
   def can_post_to_newgistics
-    can_post = ENV["ENABLE_NEWGISTICS"].downcase == 'true' || !Rails.env.test?
-    is_master? && can_post
+    can_post = (ENV["ENABLE_NEWGISTICS"] && ENV["ENABLE_NEWGISTICS"].downcase == 'true') || !Rails.env.test?
+    !is_master? && can_post
   end
 end
